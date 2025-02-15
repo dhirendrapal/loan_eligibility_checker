@@ -88,7 +88,8 @@ def test_prediction_failure(client):
 
 def test_prediction_missing_data(client):
     response = client.post("/predict", json={})  # Sending empty data
-    assert response.status_code == 400  # Expecting an internal server error due to missing data
+    assert response.status_code == 400  # Expecting 400, not 500
+    assert response.json["error"] == "Missing input data"  # Validate error message
 
 if __name__ == "__main__":
     pytest.main()
