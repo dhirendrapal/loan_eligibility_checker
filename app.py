@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
 
@@ -38,7 +38,7 @@ def prediction():
 
         # Handle empty or invalid data
         if not data:
-            return {"error": "No input data provided"}, 400
+            return jsonify({'error': 'Missing input data'}), 400
 
         # Convert input data to DataFrame
         data_df = pd.DataFrame([data])
@@ -76,6 +76,7 @@ def prediction():
         else:
             pred="Approved"
 
-        return{"prediction":pred}
+        result = {"prediction":pred}
+        return jsonify(result), 200
     except Exception as e:
-        return {"error": f"An error occurred: {str(e)}"}, 500
+        return jsonify({'error': str(e)}), 500  # Catch and log unexpected errors
