@@ -106,15 +106,15 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: $ECS_TASK_DEFINITION
-          container-name: $CONTAINER_NAME
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ env.ECR_REGISTRY }}:${{ env.NEW_TAG }}
   
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          cluster: $ECS_CLUSTER
-          service: $ECS_SERVICE
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
           task-definition: ${{ steps.task-def.outputs.task-definition }}
 
   run-ecs-task:
@@ -123,4 +123,4 @@ jobs:
     steps:
       - name: Run ECS Task
         run: |
-          aws ecs run-task --cluster $ECS_CLUSTER --task-definition $ECS_TASK_DEFINITION
+          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} --task-definition ${{ env.ECS_TASK_DEFINITION }}
