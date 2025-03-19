@@ -4,9 +4,16 @@ on:
   push:
     branches:
       - main  # Runs when code is pushed to 'main'
+env:
+  AWS_REGION: us-east-1  # Change as per your AWS region
+  ECR_REPOSITORY: loan_eligibility_checker  # Change to your AWS ECR repository name
+  ECS_CLUSTER: mlops_lec  # Change to your ECS cluster name
+  ECS_SERVICE: my-service  # Change to your ECS service name
+  ECS_TASK_DEFINITION: task_definition.json  # Change to your ECS task definition file
+  CONTAINER_NAME: loan_eligibility_checker_container  # Change to your container name
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -36,3 +43,84 @@ jobs:
         with:
           name: test-logs
           path: test_output.log
+          
+  docker-build-push:
+    needs: build-test
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get the latest versioned tag from ECR
+        id: get-latest-tag
+        run: |
+          ECR_REGISTRY=$(aws ecr describe-repositories --query "repositories[?repositoryName=='$ECR_REPOSITORY'].repositoryUri" --output text)
+          echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
+
+          # Get all versioned tags (ignore 'latest')
+          TAGS=$(aws ecr list-images --repository-name $ECR_REPOSITORY --query 'imageIds[*].imageTag' --output text | grep -E '^v[0-9]+$' || echo "")
+
+          if [ -z "$TAGS" ]; then
+            NEW_TAG="v001"  # Start from v001 if no valid version exists
+          else
+            LATEST_TAG=$(echo "$TAGS" | sort -rV | head -n 1)
+            NEW_TAG="v$(printf "%03d" $((10#${LATEST_TAG:1} + 1)))"
+          fi
+
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          echo "New Tag: $NEW_TAG"
+
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REPOSITORY:$NEW_TAG .
+
+      - name: Tag Docker image
+        run: |
+          docker tag $ECR_REPOSITORY:$NEW_TAG $ECR_REGISTRY:$NEW_TAG
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push $ECR_REGISTRY:$NEW_TAG
+  
+  deploy-ecs:
+     needs: docker-build-push
+     runs-on: ubuntu-latest
+     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+  
+      - name: Update ECS Task Definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: $ECS_TASK_DEFINITION
+          container-name: $CONTAINER_NAME
+          image: ${{ env.ECR_REGISTRY }}:${{ env.NEW_TAG }}
+  
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          cluster: $ECS_CLUSTER
+          service: $ECS_SERVICE
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+
+  run-ecs-task:
+    needs: deploy-ecs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run ECS Task
+        run: |
+          aws ecs run-task --cluster $ECS_CLUSTER --task-definition $ECS_TASK_DEFINITION
