@@ -107,8 +107,14 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}  
+          aws-region: ${{ env.AWS_REGION }} 
           
+      - name: Get ECR Repository URI
+        id: ecr-uri
+        run: |
+          ECR_REGISTRY=$(aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --query "repositories[0].repositoryUri" --output text)
+          echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
+
       - name: Update ECS Task Definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
