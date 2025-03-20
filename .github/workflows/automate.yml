@@ -94,6 +94,15 @@ jobs:
       - name: Push Docker image to ECR
         run: |
           docker push $ECR_REGISTRY:$NEW_TAG
+
+      - name: Save NEW_TAG to file
+        run: echo "$NEW_TAG" > new_tag.txt
+      
+      - name: Upload NEW_TAG as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: new-tag
+          path: new_tag.txt          
   
   deploy-ecs:
      needs: docker-build-push
@@ -114,7 +123,18 @@ jobs:
         run: |
           ECR_REGISTRY=$(aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --query "repositories[0].repositoryUri" --output text)
           echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
+          
+      - name: Download NEW_TAG artifact
+        uses: actions/download-artifact@v4
+        with:
+            name: new-tag
+      
+      - name: Load NEW_TAG
+        run: echo "NEW_TAG=$(cat new_tag.txt)" >> $GITHUB_ENV
 
+      - name: Debug NEW_TAG
+        run: echo "Deploying with NEW_TAG=$NEW_TAG"
+        
       - name: Update ECS Task Definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -122,7 +142,7 @@ jobs:
           task-definition: ${{ env.ECS_TASK_DEFINITION }}
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ env.ECR_REGISTRY }}:${{ env.NEW_TAG }}
-  
+      
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
