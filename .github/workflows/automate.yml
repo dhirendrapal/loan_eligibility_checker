@@ -165,12 +165,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
           
-      - name: Get Latest Task Definition
-        id: get-task-def
-        run: |
-          TASK_DEF=$(aws ecs list-task-definitions --sort DESC --query "taskDefinitionArns[0]" --output text | awk -F'/' '{print $2}')
-          echo "TASK_DEF=$TASK_DEF" >> $GITHUB_ENV
-
       - name: Run ECS Task
         run: |
-          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} --task-definition ${{ env.TASK_DEF }}
+          TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.CONTAINER_NAME }} --sort DESC --query "taskDefinitionArns[0]" --output text)
+          echo "Latest Task Definition: $TASK_DEF"
+          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} --task-definition "$TASK_DEF"
+
