@@ -164,8 +164,9 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-
+          
       - name: Run ECS Task
         run: |
-          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} \
-          --task-definition ${{ steps.task-def.outputs.task-definition }}
+          TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.CONTAINER_NAME }} --sort DESC --query "taskDefinitionArns[0]" --output text)
+          echo "Latest Task Definition: $TASK_DEF"
+          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} --task-definition "$TASK_DEF"
