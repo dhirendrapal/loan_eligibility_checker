@@ -8,7 +8,7 @@ env:
   AWS_REGION: us-east-1  # Change as per your AWS region
   ECR_REPOSITORY: loan_eligibility_checker  # Change to your AWS ECR repository name
   ECS_CLUSTER: mlops_lec  # Change to your ECS cluster name
-  ECS_SERVICE: my-service  # Change to your ECS service name
+  ECS_SERVICE: my_service_lec  # Change to your ECS service name
   ECS_TASK_DEFINITION: task_definition.json  # Change to your ECS task definition file
   CONTAINER_NAME: loan_eligibility_checker_container  # Change to your container name
 
@@ -116,6 +116,7 @@ jobs:
           cluster: ${{ env.ECS_CLUSTER }}
           service: ${{ env.ECS_SERVICE }}
           task-definition: ${{ steps.task-def.outputs.task-definition }}
+          wait-for-service-stability: true  # Ensure deployment is stable
 
   run-ecs-task:
     needs: deploy-ecs
@@ -123,4 +124,5 @@ jobs:
     steps:
       - name: Run ECS Task
         run: |
-          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} --task-definition ${{ env.ECS_TASK_DEFINITION }}
+          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} \
+          --task-definition ${{ steps.task-def.outputs.task-definition }}  # Use latest task definition
