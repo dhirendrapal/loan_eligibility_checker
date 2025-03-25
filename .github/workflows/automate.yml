@@ -167,7 +167,8 @@ jobs:
           
       - name: Run ECS Task
         run: |
+          echo "Waiting for ECS task definition to register..."
+          sleep 15
           TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.CONTAINER_NAME }} --sort DESC --query "taskDefinitionArns[0]" --output text)
           echo "Latest Task Definition: $TASK_DEF"
           aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} --task-definition "$TASK_DEF"
-
