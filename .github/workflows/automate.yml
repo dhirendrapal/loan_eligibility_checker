@@ -1,5 +1,5 @@
 name: Automate CI
-# explained the process
+#explained the process
 
 on:
   push:
