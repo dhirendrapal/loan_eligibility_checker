@@ -165,10 +165,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
           
+      - name: Get Latest Task Definition ARN
+        id: get-task-def
+        run: |
+          TASK_DEF_ARN=$(aws ecs list-task-definitions \
+            --family-prefix ${{ env.CONTAINER_NAME }} \
+            --sort DESC \
+            --query "taskDefinitionArns[0]" \
+            --output text)
+          
+          echo "TASK_DEF_ARN=$TASK_DEF_ARN" >> $GITHUB_ENV
+
+      - name: Extract Task Definition Name and Revision
+        run: |
+          TASK_NAME=$(echo "$TASK_DEF_ARN" | awk -F'/' '{print $NF}' | awk -F':' '{print $1}')
+          TASK_REVISION=$(echo "$TASK_DEF_ARN" | awk -F':' '{print $NF}')
+          
+          echo "TASK_NAME=$TASK_NAME" >> $GITHUB_ENV
+          echo "TASK_REVISION=$TASK_REVISION" >> $GITHUB_ENV
+          echo "Latest Task Definition: $TASK_NAME:$TASK_REVISION"
+
       - name: Run ECS Task
         run: |
-          echo "Waiting for ECS task definition to register..."
-          sleep 15
-          TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.CONTAINER_NAME }} --sort DESC --query "taskDefinitionArns[0]" --output text)
-          echo "Latest Task Definition: $TASK_DEF"
-          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} --task-definition "$TASK_DEF"
+          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition "$TASK_NAME:$TASK_REVISION"
