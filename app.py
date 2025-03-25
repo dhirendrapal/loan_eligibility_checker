@@ -6,11 +6,11 @@ app=Flask(__name__)
 
 @app.route('/')
 def home():
-    return("Welcome to Flask API")
+    return("Welcome to Flask API!")
 
 @app.route('/ping')
 def printflaskapi():
-    return("Ping to Flask API")
+    return("Ping to Flask API!!")
 
 @app.route("/predict",methods=["POST"])
 def prediction():
