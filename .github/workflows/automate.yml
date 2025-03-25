@@ -169,21 +169,32 @@ jobs:
         id: get-task-def
         run: |
           TASK_DEF_ARN=$(aws ecs list-task-definitions \
-            --family-prefix ${{ env.CONTAINER_NAME }} \
+            --family-prefix ${{ env.TASK_FAMILY }} \
             --sort DESC \
             --query "taskDefinitionArns[0]" \
             --output text)
-          
-          echo "TASK_DEF_ARN=$TASK_DEF_ARN" >> $GITHUB_ENV
 
-      - name: Extract Task Definition Name and Revision
+          if [[ -z "$TASK_DEF_ARN" || "$TASK_DEF_ARN" == "None" ]]; then
+            echo "❌ ERROR: No Task Definition Found!"
+            exit 1
+          fi
+
+          echo "TASK_DEF_ARN=$TASK_DEF_ARN" >> $GITHUB_ENV
+          echo "Found Task Definition ARN: $TASK_DEF_ARN"
+
+      - name: Extract Task Name and Revision
         run: |
           TASK_NAME=$(echo "$TASK_DEF_ARN" | awk -F'/' '{print $NF}' | awk -F':' '{print $1}')
           TASK_REVISION=$(echo "$TASK_DEF_ARN" | awk -F':' '{print $NF}')
-          
+
+          if [[ -z "$TASK_REVISION" || "$TASK_REVISION" == "None" ]]; then
+            echo "❌ ERROR: Invalid Task Revision!"
+            exit 1
+          fi
+
           echo "TASK_NAME=$TASK_NAME" >> $GITHUB_ENV
           echo "TASK_REVISION=$TASK_REVISION" >> $GITHUB_ENV
-          echo "Latest Task Definition: $TASK_NAME:$TASK_REVISION"
+          echo "Using Task Definition: $TASK_NAME:$TASK_REVISION"
 
       - name: Run ECS Task
         run: |
