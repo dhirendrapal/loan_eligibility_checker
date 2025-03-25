@@ -165,6 +165,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
           
+      - name: Define Task Family (Ensure It Exists)
+        run: |
+          TASK_FAMILY="loan_eligibility_checker"  # Use the exact family name from your task definition
+          echo "TASK_FAMILY=$TASK_FAMILY" >> $GITHUB_ENV
+          echo "Using Task Family: $TASK_FAMILY"
+          
       - name: Get Latest Task Definition ARN
         id: get-task-def
         run: |
